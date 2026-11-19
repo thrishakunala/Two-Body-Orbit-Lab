@@ -1,4 +1,5 @@
 # Two-Body Orbit Lab
+
 ### ME206 – Statics and Dynamics | Assignment 4
 
 An interactive **Two-Body Gravitational Orbit Simulator** developed as a supplementary project for the ME206 Statics and Dynamics course.
@@ -32,21 +33,23 @@ The simulation uses natural units with the gravitational constant set to \(G=1\)
 
 ## 3. Live Demo
 
-The interactive simulator can be accessed through the following link:
+The interactive simulator is available online through GitHub Pages.
 
-**[Launch Two-Body Orbit Lab](https://YOUR-thrishakunala.github.io/Two-Body-Orbit-Lab/)**
+**[Launch Two-Body Orbit Lab](https://thrishakunala.github.io/Two-Body-Orbit-Lab/)**
 
-Replace `YOUR-thrishakunala` with your GitHub thrishakunala after enabling GitHub Pages.
+You can interact with the simulator directly in your web browser without downloading the project files.
 
-The source code and supporting files are available in this repository.
+## 4. GitHub Repository
 
-**GitHub Repository:** `https://github.com/YOUR-thrishakunala/Two-Body-Orbit-Lab`
+The complete source code, simulation files, documentation, and supporting screenshots are available here:
+
+**[View Two-Body Orbit Lab on GitHub](https://github.com/thrishakunala/Two-Body-Orbit-Lab)**
 
 ---
 
-## 4. Features of the Simulator
+## 5. Features of the Simulator
 
-### 4.1 Interactive Orbit Simulation
+### 5.1 Interactive Orbit Simulation
 
 - Real-time simulation of two gravitationally interacting bodies.
 - Adjustable mass of both bodies.
@@ -54,9 +57,9 @@ The source code and supporting files are available in this repository.
 - Adjustable launch speed and flight-path angle.
 - Play, pause, restart, and single-step simulation controls.
 - Adjustable simulation playback speed.
-- Zoom in, zoom out, and fit-to-screen controls.
+- Zoom and fit-to-screen controls.
 
-### 4.2 Orbital Configurations
+### 5.2 Orbital Configurations
 
 The simulator provides several preset scenarios:
 
@@ -68,7 +71,7 @@ The simulator provides several preset scenarios:
 - **Parabolic Escape:** Demonstrates the limiting escape trajectory.
 - **Hyperbolic Flyby:** Shows an unbound gravitational flyby trajectory.
 
-### 4.3 Reference Frames
+### 5.3 Reference Frames
 
 Three reference frames are available:
 
@@ -76,7 +79,7 @@ Three reference frames are available:
 - **Body-1-Fixed Frame:** Motion observed relative to the first body.
 - **Co-Rotating Frame:** A rotating reference frame that follows the orbital configuration.
 
-### 4.4 Visualization Tools
+### 5.4 Visualization Tools
 
 - Force and velocity vectors.
 - Predicted conic-section trajectory.
@@ -85,7 +88,7 @@ Three reference frames are available:
 - Interactive body dragging.
 - Velocity adjustment by dragging vector tips when the simulation is paused.
 
-### 4.5 Real-Time Physics Data
+### 5.5 Real-Time Physics Data
 
 The simulator calculates and displays:
 
@@ -102,7 +105,7 @@ The simulator calculates and displays:
 - Gravitational force.
 - Energy drift.
 
-### 4.6 Graphical Analysis
+### 5.6 Graphical Analysis
 
 The simulator includes two interactive graphs:
 
@@ -113,11 +116,11 @@ These graphs help demonstrate the exchange between kinetic and potential energy 
 
 ---
 
-## 5. Physics and Mathematical Background
+## 6. Physics and Mathematical Background
 
 The simulation is based on Newton's law of universal gravitation and the equations governing two-body motion.
 
-### 5.1 Gravitational Force
+### 6.1 Gravitational Force
 
 According to Newton's law of universal gravitation, the attractive force between two bodies is:
 
@@ -131,7 +134,7 @@ Where:
 - \(m_1, m_2\) = Masses of the two bodies
 - \(r\) = Distance between their centers
 
-### 5.2 Reduced Mass
+### 6.2 Reduced Mass
 
 The two-body problem can be simplified into an equivalent one-body problem using the reduced mass:
 
@@ -144,7 +147,7 @@ Where:
 - \(\mu\) = Reduced mass
 - \(m_1, m_2\) = Masses of the two bodies
 
-### 5.3 Relative Equation of Motion
+### 6.3 Relative Equation of Motion
 
 The relative motion of the two bodies is governed by:
 
@@ -159,7 +162,7 @@ Where:
 - \(\ddot{\mathbf{r}}\) = Relative acceleration
 - \(\hat{\mathbf{r}}\) = Unit vector along the line joining the two bodies
 
-### 5.4 Total Mechanical Energy
+### 6.4 Total Mechanical Energy
 
 The total mechanical energy is the sum of kinetic and gravitational potential energy:
 
@@ -167,7 +170,7 @@ $$
 E = KE + PE
 $$
 
-### 5.5 Kinetic Energy
+### 6.5 Kinetic Energy
 
 The relative kinetic energy is:
 
@@ -180,7 +183,7 @@ Where:
 - \(\mu\) = Reduced mass
 - \(v\) = Relative velocity
 
-### 5.6 Gravitational Potential Energy
+### 6.6 Gravitational Potential Energy
 
 The gravitational potential energy is:
 
@@ -188,7 +191,7 @@ $$
 PE = -\frac{Gm_1m_2}{r}
 $$
 
-### 5.7 Conservation of Energy
+### 6.7 Conservation of Energy
 
 For an ideal isolated two-body gravitational system, total mechanical energy remains constant:
 
@@ -198,7 +201,7 @@ $$
 
 The simulator displays energy drift to help observe the numerical accuracy of the simulation.
 
-### 5.8 Angular Momentum
+### 6.8 Angular Momentum
 
 The angular momentum of the relative motion is:
 
@@ -210,7 +213,7 @@ For an ideal two-body gravitational system, angular momentum is conserved.
 
 ---
 
-## 6. Numerical Method
+## 7. Numerical Method
 
 The simulator uses the **Fourth-Order Runge-Kutta (RK4) numerical integration method** to calculate the motion of the bodies over time.
 
@@ -222,7 +225,7 @@ This method allows the simulator to calculate the changing positions and velocit
 
 ---
 
-## 7. Software Requirements
+## 8. Software Requirements
 
 The following software is required to run the project:
 
@@ -237,7 +240,7 @@ The following software is required to run the project:
 
 ---
 
-## 8. Technologies and Dependencies
+## 9. Technologies and Dependencies
 
 ### Technologies Used
 
@@ -260,7 +263,7 @@ Google Fonts are loaded externally for typography, so an internet connection is 
 
 ---
 
-## 9. Project File Structure
+## 10. Project File Structure
 
 The repository is organized as follows:
 
@@ -268,18 +271,14 @@ The repository is organized as follows:
 Two-Body-Orbit-Lab/
 │
 ├── README.md
-│
-├── two-body-orbit-lab.html
-│
 ├── index.html
-│
+├── two-body-orbit-lab.html
 ├── Two-Body Orbit Lab.bat
 │
-└── screenshots/
-    ├── main-interface.png
-    ├── elliptical-orbit.png
-    ├── energy-graphs.png
-    └── binary-system.png
+├── main-interface.png
+├── elliptical-orbit.png
+├── energy-graphs.png
+└── binary-system.png
 ```
 
 ### File Descriptions
@@ -287,16 +286,19 @@ Two-Body-Orbit-Lab/
 | File | Description |
 |---|---|
 | `README.md` | Project documentation, requirements, and execution instructions. |
-| `two-body-orbit-lab.html` | Main simulator source code containing the interface, physics calculations, and visualization. |
 | `index.html` | Copy of the main HTML file used as the entry point for GitHub Pages. |
+| `two-body-orbit-lab.html` | Main simulator source code containing the interface, physics calculations, and visualization. |
 | `Two-Body Orbit Lab.bat` | Windows batch file used to launch the simulator in an app-style browser window when supported. |
-| `screenshots/` | Supporting screenshots showing the simulator and its features. |
+| `main-interface.png` | Screenshot of the main simulator interface. |
+| `elliptical-orbit.png` | Screenshot demonstrating an elliptical orbit. |
+| `energy-graphs.png` | Screenshot showing the energy graphs. |
+| `binary-system.png` | Screenshot demonstrating a binary system. |
 
 **Important:** `index.html` should contain the same simulator code as `two-body-orbit-lab.html`. Keep the original HTML file because the Windows batch launcher uses its original filename.
 
 ---
 
-## 10. Installation and Execution Instructions
+## 11. Installation and Execution Instructions
 
 No installation or compilation is required.
 
@@ -325,13 +327,15 @@ No installation or compilation is required.
 5. Select the `/(root)` folder.
 6. Click **Save**.
 7. Wait for GitHub Pages to publish the website.
-8. Open the published website link to access the simulator.
+8. Open the published website link:
+
+   **https://thrishakunala.github.io/Two-Body-Orbit-Lab/**
 
 The online simulator can be accessed without downloading the project files.
 
 ---
 
-## 11. How to Use the Simulator
+## 12. How to Use the Simulator
 
 1. Open the simulator in a web browser.
 2. Select one of the available orbital presets.
@@ -353,11 +357,11 @@ The online simulator can be accessed without downloading the project files.
 - Drag a body to change its position.
 - Pause the simulation and drag a velocity arrow tip to change the velocity.
 - Use the zoom controls to adjust the viewing scale.
-- Enable or disable the visualization options using the available checkboxes.
+- Enable or disable the visualization options using the available controls.
 
 ---
 
-## 12. Reproducibility
+## 13. Reproducibility
 
 The simulation can be reproduced using the files available in this repository.
 
@@ -376,7 +380,7 @@ For consistent comparisons, use the same initial masses, separation, launch spee
 
 ---
 
-## 13. Applications in Statics and Dynamics
+## 14. Applications in Statics and Dynamics
 
 This project demonstrates several important concepts related to engineering mechanics and dynamics:
 
@@ -394,29 +398,29 @@ The project connects theoretical concepts from the Statics and Dynamics course w
 
 ---
 
-## 14. Supporting Screenshots
+## 15. Supporting Screenshots
 
-The following screenshots can be used to demonstrate the simulator's functionality.
+The following screenshots demonstrate the simulator's interface and functionality.
 
 ### Main Simulator Interface
 
-![Main Simulator Interface](screenshots/main-interface.png)
+![Main Simulator Interface](main-interface.png)
 
 ### Elliptical Orbit
 
-![Elliptical Orbit](screenshots/elliptical-orbit.png)
+![Elliptical Orbit](elliptical-orbit.png)
 
 ### Energy Graphs
 
-![Energy Graphs](screenshots/energy-graphs.png)
+![Energy Graphs](energy-graphs.png)
 
 ### Binary System
 
-![Binary System](screenshots/binary-system.png)
+![Binary System](binary-system.png)
 
 ---
 
-## 15. Conclusion
+## 16. Conclusion
 
 The Two-Body Orbit Lab provides an interactive way to study the gravitational interaction between two bodies.
 
@@ -428,10 +432,22 @@ This project connects theoretical concepts from the ME206 Statics and Dynamics c
 
 ---
 
-## 16. Course and Assignment Information
+## 17. Course and Assignment Information
 
 **Course:** ME206 – Statics and Dynamics
 
 **Assignment:** Assignment 4 – Supplementary Material Submission
 
-**Project Title:** Two
+**Project Title:** Two-Body Gravitational Orbit Simulator
+
+**Project Type:** Interactive Physics Simulation
+
+**Technologies:** HTML5, CSS3, JavaScript, and Canvas API
+
+**GitHub Repository:** https://github.com/thrishakunala/Two-Body-Orbit-Lab
+
+**Live Simulator:** https://thrishakunala.github.io/Two-Body-Orbit-Lab/
+
+---
+
+**Developed as part of the ME206 Statics and Dynamics course assignment.**
