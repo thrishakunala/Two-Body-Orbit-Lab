@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Two-Body Orbit Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400;1,6..72,500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* Layout idea: an observatory logbook at night. One large sky plate on the left,
+   a narrow instrument column on the right, two analysis charts under the plate.
+   Single dark theme by choice. */
+:root {
+  color-scheme: dark;
+  --ink: #0a0f24;        /* night sky */
+  --plate: #0e1530;      /* canvas ground */
+  --panel: #131b3b;      /* instrument column */
+  --rule: #26305c;       /* hairlines */
+  --text: #e9ecf7;
+  --muted: #8d98c0;
+  --body1: #ffb957;      /* primary body, amber */
+  --body2: #6fd0ff;      /* secondary body, ice blue */
+  --force: #ff6f8e;      /* gravity */
+  --inertial: #b9a2ff;   /* centrifugal (d'Alembert) */
+  --kinetic: #7fe3b6;
+  --font-display: "Newsreader", "Iowan Old Style", Georgia, serif;
+  --font-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--ink);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.45;
+}
+.wrap { max-width: 1320px; margin: 0 auto; padding: 20px 20px 36px; display: flex; flex-direction: column; gap: 16px; }
+
+header { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 8px 32px; border-bottom: 1px solid var(--rule); padding-bottom: 14px; }
+h1 { font-family: var(--font-display); font-weight: 400; font-style: italic; font-size: 38px; line-height: 1; margin: 0; letter-spacing: -0.01em; text-wrap: balance; }
+h1 span { font-style: normal; color: var(--muted); font-size: 0.5em; letter-spacing: 0.02em; margin-left: 10px; }
+.eqn { font-family: var(--font-display); font-style: italic; font-size: 19px; color: var(--text); white-space: nowrap; }
+.eqn small { font-family: var(--font-mono); font-style: normal; font-size: 11px; color: var(--muted); margin-left: 12px; }
+.eqn b { font-weight: 500; font-style: normal; }
+
+.grid { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; align-items: start; }
+.left { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+
+.stage { position: relative; background: var(--plate); border: 1px solid var(--rule); border-radius: 6px; overflow: hidden; }
+#sky { display: block; width: 100%; height: min(62vh, 620px); min-height: 340px; touch-action: none; cursor: default; }
+.legend { position: absolute; left: 12px; top: 10px; display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--muted); pointer-events: none; max-width: calc(100% - 140px); }
+.legend i { display: inline-block; width: 14px; height: 2px; vertical-align: middle; margin-right: 6px; border-radius: 1px; }
+.legend .dot i { width: 8px; height: 8px; border-radius: 50%; }
+.zoom { position: absolute; right: 10px; top: 10px; display: flex; gap: 4px; }
+.status { position: absolute; left: 12px; bottom: 10px; right: 12px; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 16px; font-family: var(--font-mono); font-size: 12px; color: var(--muted); pointer-events: none; }
+.status .hint { font-family: var(--font-body); }
+#balance { color: var(--text); }
+#balance b { font-weight: 500; }
+
+.transport { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
+.transport .spacer { flex: 1; }
+
+button, .seg label, .chip {
+  font: inherit; color: var(--text); background: transparent; border: 1px solid var(--rule);
+  border-radius: 4px; padding: 6px 12px; cursor: pointer; transition: background .12s, border-color .12s;
+}
+button:hover, .seg label:hover, .chip:hover { border-color: var(--muted); }
+button:focus-visible, input:focus-visible, .seg input:focus-visible + label { outline: 2px solid var(--body2); outline-offset: 2px; }
+button.primary { background: var(--body1); border-color: var(--body1); color: #1a1200; font-weight: 600; min-width: 84px; }
+button.primary:hover { background: #ffc97c; }
+button.sq { padding: 4px 0; width: 30px; background: rgba(10,15,36,.7); font-family: var(--font-mono); }
+button.sq.wide { width: auto; padding: 4px 9px; }
+
+.seg { display: inline-flex; }
+.seg input { position: absolute; opacity: 0; pointer-events: none; }
+.seg label { border-radius: 0; margin-left: -1px; font-size: 13px; }
+.seg label:first-of-type { border-radius: 4px 0 0 4px; margin-left: 0; }
+.seg label:last-of-type { border-radius: 0 4px 4px 0; }
+.seg input:checked + label { background: var(--text); color: var(--ink); border-color: var(--text); position: relative; }
+
+.charts { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.chart { background: var(--plate); border: 1px solid var(--rule); border-radius: 6px; padding: 12px 12px 8px; min-width: 0; }
+.chart h3, .panel h2 { font-family: var(--font-body); font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin: 0 0 6px; }
+.chart p { margin: 0 0 6px; font-size: 12.5px; color: var(--muted); max-width: 60ch; }
+.chart canvas { display: block; width: 100%; height: 210px; }
+
+.side { display: flex; flex-direction: column; gap: 16px; }
+.panel { background: var(--panel); border: 1px solid var(--rule); border-radius: 6px; padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font-size: 12.5px; padding: 4px 10px; border-radius: 99px; }
+.chip.on { background: var(--text); color: var(--ink); border-color: var(--text); }
+
+.ctl { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; align-items: baseline; }
+.ctl label { font-size: 13px; }
+.ctl output { font-family: var(--font-mono); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.ctl input[type=range] { grid-column: 1 / -1; width: 100%; margin: 4px 0 0; accent-color: var(--text); }
+.ctl.b1 input { accent-color: var(--body1); } .ctl.b1 label::before, .ctl.b2 label::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 7px; }
+.ctl.b1 label::before { background: var(--body1); } .ctl.b2 label::before { background: var(--body2); }
+.ctl.b2 input { accent-color: var(--body2); }
+.ctl .note { grid-column: 1 / -1; font-size: 11.5px; color: var(--muted); }
+
+.checks { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px; font-size: 13px; }
+.checks label { display: flex; align-items: center; gap: 7px; cursor: pointer; }
+.checks input { accent-color: var(--text); margin: 0; }
+
+.verdict { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.verdict strong { font-family: var(--font-display); font-style: italic; font-weight: 400; font-size: 28px; line-height: 1; }
+.pill { font-family: var(--font-mono); font-size: 11.5px; padding: 2px 8px; border-radius: 99px; border: 1px solid currentColor; white-space: nowrap; }
+.pill.bound { color: var(--kinetic); } .pill.unbound { color: var(--force); } .pill.edge { color: var(--body1); }
+dl { display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px; margin: 0; }
+dl div { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; padding: 5px 0; border-top: 1px solid var(--rule); min-width: 0; }
+dt { color: var(--muted); font-size: 12.5px; white-space: nowrap; }
+dt em { font-family: var(--font-display); font-size: 15px; color: var(--text); }
+dd { margin: 0; font-family: var(--font-mono); font-size: 12.5px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.foot { font-size: 12px; color: var(--muted); margin: 0; }
+
+@media (max-width: 980px) {
+  .grid { grid-template-columns: 1fr; }
+  .eqn small { display: none; }
+}
+@media (max-width: 620px) {
+  .charts { grid-template-columns: 1fr; }
+  h1 { font-size: 30px; }
+  .wrap { padding: 16px 16px 28px; }
+  #sky { height: 380px; }
+  .legend { max-width: calc(100% - 24px); top: 44px; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Two-Body Orbit Lab <span>G = 1, natural units</span></h1>
+    <div class="eqn">μ <b>r̈</b> = −G m₁m₂ <b>r̂</b> / r² <small>μ = m₁m₂ / (m₁+m₂), r = r₂ − r₁</small></div>
+  </header>
+
+  <div class="grid">
+    <div class="left">
+      <div class="stage">
+        <canvas id="sky" aria-label="Animated view of two bodies orbiting under mutual gravity"></canvas>
+        <div class="legend" id="legend"></div>
+        <div class="zoom">
+          <button class="sq" id="zoomOut" type="button" aria-label="Zoom out">−</button>
+          <button class="sq" id="zoomIn" type="button" aria-label="Zoom in">+</button>
+          <button class="sq wide" id="zoomFit" type="button">Fit</button>
+        </div>
+        <div class="status"><span id="balance"></span><span class="hint" id="hint"></span></div>
+      </div>
+
+      <div class="transport">
+        <button class="primary" id="play" type="button">Pause</button>
+        <button id="step" type="button">Step</button>
+        <button id="reset" type="button">Restart</button>
+        <span class="spacer"></span>
+        <div class="seg" role="radiogroup" aria-label="Reference frame">
+          <input type="radio" name="frame" id="f-bary" value="bary" checked><label for="f-bary">Barycentric</label>
+          <input type="radio" name="frame" id="f-b1" value="b1"><label for="f-b1">Body 1 fixed</label>
+          <input type="radio" name="frame" id="f-rot" value="rot"><label for="f-rot">Co-rotating</label>
+        </div>
+      </div>
+
+      <div class="charts">
+        <div class="chart">
+          <h3>Effective potential</h3>
+          <p>The orbit reduced to one dimension. The dot rides the curve between the turning points where it meets the energy line.</p>
+          <canvas id="ueff"></canvas>
+        </div>
+        <div class="chart">
+          <h3>Energy over time</h3>
+          <p>Kinetic and potential energy trade back and forth. Their sum stays flat.</p>
+          <canvas id="energy"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <aside class="side">
+      <div class="panel">
+        <div class="verdict"><strong id="otype">Elliptical</strong><span class="pill bound" id="obound">bound, E &lt; 0</span></div>
+        <dl>
+          <div><dt>Eccentricity <em>e</em></dt><dd id="r-e"></dd></div>
+          <div><dt>Semi-major <em>a</em></dt><dd id="r-a"></dd></div>
+          <div><dt>Periapsis</dt><dd id="r-rp"></dd></div>
+          <div><dt>Apoapsis</dt><dd id="r-ra"></dd></div>
+          <div><dt>Period <em>T</em></dt><dd id="r-T"></dd></div>
+          <div><dt>Orbits done</dt><dd id="r-n"></dd></div>
+          <div><dt>Separation <em>r</em></dt><dd id="r-r"></dd></div>
+          <div><dt>Rel. speed <em>v</em></dt><dd id="r-v"></dd></div>
+          <div><dt>Energy <em>E</em></dt><dd id="r-E"></dd></div>
+          <div><dt>Ang. mom. <em>L</em></dt><dd id="r-L"></dd></div>
+          <div><dt>Force <em>F</em></dt><dd id="r-F"></dd></div>
+          <div><dt>Energy drift</dt><dd id="r-dE"></dd></div>
+        </dl>
+      </div>
+
+      <div class="panel">
+        <h2>Scenarios</h2>
+        <div class="chips" id="presets"></div>
+      </div>
+
+      <div class="panel">
+        <h2>Initial conditions</h2>
+        <div class="ctl b1"><label for="m1">Mass 1</label><output id="o-m1"></output><input type="range" id="m1" min="0.1" max="10" step="0.1"></div>
+        <div class="ctl b2"><label for="m2">Mass 2</label><output id="o-m2"></output><input type="range" id="m2" min="0.1" max="10" step="0.1"></div>
+        <div class="ctl"><label for="r0">Starting separation</label><output id="o-r0"></output><input type="range" id="r0" min="0.5" max="2" step="0.05"></div>
+        <div class="ctl"><label for="k">Launch speed</label><output id="o-k"></output><input type="range" id="k" min="0" max="2" step="0.01">
+          <span class="note">1.00 gives a circle. 1.41 (√2) is escape speed.</span></div>
+        <div class="ctl"><label for="gam">Flight-path angle</label><output id="o-gam"></output><input type="range" id="gam" min="-85" max="85" step="1">
+          <span class="note">0° launches at right angles to the line between the bodies.</span></div>
+        <div class="ctl"><label for="rate">Playback rate</label><output id="o-rate"></output><input type="range" id="rate" min="0.1" max="4" step="0.1"></div>
+      </div>
+
+      <div class="panel">
+        <h2>Show</h2>
+        <div class="checks">
+          <label><input type="checkbox" id="s-vec" checked>Vectors</label>
+          <label><input type="checkbox" id="s-conic" checked>Predicted conic</label>
+          <label><input type="checkbox" id="s-trail" checked>Trails</label>
+          <label><input type="checkbox" id="s-area">Equal areas</label>
+        </div>
+        <p class="foot">Drag a body to move it. Pause, then drag an arrow tip to change a velocity. Space toggles play.</p>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<script>
+(() => {
+"use strict";
+const $ = id => document.getElementById(id);
+const css = getComputedStyle(document.documentElement);
+const C = {};
+for (const k of ["ink","plate","rule","text","muted","body1","body2","force","inertial","kinetic"]) C[k] = css.getPropertyValue("--" + k).trim();
+const FONT_MONO = '11px "IBM Plex Mono", ui-monospace, monospace';
+const FONT_SERIF = 'italic 14px "Newsreader", Georgia, serif';
+const G = 1, TAU = Math.PI * 2;
+
+/* ---------- state ---------- */
+const P = { m1: 5, m2: 1, r0: 1, k: 0.75, gam: 0, rate: 1 };          // initial conditions
+const S = { x: 1, y: 0, vx: 0, vy: 1, t: 0 };                          // relative state r = r2 - r1
+let running = !matchMedia("(prefers-reduced-motion: reduce)").matches;
+let frame = "bary", collided = false;
+let T0 = 1, vc0 = 1, F0 = 1, tau = 0.35, E0 = 0;
+let trail = [], series = [], sectors = [], sectorEnd = 0, sectorDt = 1;
+let extent = 2, extentTarget = 2, zoom = 1;
+let activePreset = "Ellipse";
+
+const PRESETS = {
+  "Circle":           { m1: 5, m2: 1,   r0: 1,   k: 1,            gam: 0 },
+  "Ellipse":          { m1: 5, m2: 1,   r0: 1,   k: 0.75,         gam: 0 },
+  "Equal binary":     { m1: 3, m2: 3,   r0: 1.2, k: 0.8,          gam: 0 },
+  "Eccentric binary": { m1: 4, m2: 2,   r0: 1.5, k: 0.45,         gam: 0 },
+  "Star and planet":  { m1: 10, m2: 0.1, r0: 1,  k: 1.15,         gam: 0 },
+  "Parabolic escape": { m1: 6, m2: 1,   r0: 0.6, k: Math.SQRT2,   gam: 0 },
+  "Hyperbolic flyby": { m1: 6, m2: 1,   r0: 2,   k: 1.8,          gam: -65 },
+};
+
+const M = () => P.m1 + P.m2;
+const mu = () => G * M();
+const mur = () => P.m1 * P.m2 / M();
+const f1 = () => P.m2 / M();   // body 1 sits at -f1 r from the barycentre
+const f2 = () => P.m1 / M();   // body 2 sits at +f2 r
+const radius = m => 0.03 * Math.cbrt(m);
+
+function elements() {
+  const { x, y, vx, vy } = S, m = mu();
+  const r = Math.hypot(x, y), v2 = vx * vx + vy * vy;
+  const h = x * vy - y * vx, eps = v2 / 2 - m / r, rv = x * vx + y * vy;
+  const ex = ((v2 - m / r) * x - rv * vx) / m, ey = ((v2 - m / r) * y - rv * vy) / m;
+  const e = Math.hypot(ex, ey), p = h * h / m;
+  const a = Math.abs(eps) > 1e-9 ? -m / (2 * eps) : Infinity;
+  const rp = p / (1 + e), ra = e < 1 - 1e-6 ? p / (1 - e) : Infinity;
+  const T = eps < -1e-9 ? TAU * Math.sqrt(a * a * a / m) : Infinity;
+  const KE = 0.5 * mur() * v2, PE = -G * P.m1 * P.m2 / r;
+  return { r, v: Math.sqrt(v2), h, eps, e, w: Math.atan2(ey, ex), p, a, rp, ra, T, KE, PE, E: KE + PE,
+           L: mur() * h, F: G * P.m1 * P.m2 / (r * r), vr: rv / r, th: Math.atan2(y, x) };
+}
+
+function initFromParams() {
+  const g = P.gam * Math.PI / 180;
+  vc0 = Math.sqrt(mu() / P.r0);
+  S.x = P.r0; S.y = 0;
+  S.vx = P.k * vc0 * Math.sin(g); S.vy = P.k * vc0 * Math.cos(g);
+  T0 = TAU * Math.sqrt(P.r0 ** 3 / mu());
+  F0 = G * P.m1 * P.m2 / (P.r0 * P.r0);
+  tau = 0.35 * P.r0 / vc0;
+  restartRecord();
+}
+function restartRecord() {
+  S.t = 0; collided = false; trail = []; series = [];
+  const el = elements();
+  E0 = el.E;
+  sectorDt = isFinite(el.T) && el.T < 40 * T0 ? el.T / 12 : T0 / 6;
+  sectors = [{ pts: [[S.x, S.y]] }]; sectorEnd = sectorDt;
+  fit(true);
+  $("hint").textContent = "";
+}
+function fit(snap) {
+  const el = elements();
+  const reach = frame === "b1" ? 1 : Math.max(f1(), f2());
+  let ext;
+  if (isFinite(el.ra) && el.ra < 30 * P.r0) ext = el.ra * reach * 1.22;
+  else ext = Math.max(2.6 * P.r0, el.r * 1.25) * reach;
+  extentTarget = Math.max(ext, 0.3);
+  if (snap) extent = extentTarget;
+}
+
+/* ---------- integrator: RK4 with a step tied to the local orbital timescale ---------- */
+function rk4(h) {
+  const m = mu();
+  const acc = (x, y) => { const r2 = x * x + y * y, r3 = r2 * Math.sqrt(r2); return [-m * x / r3, -m * y / r3]; };
+  const { x, y, vx, vy } = S;
+  const a1 = acc(x, y);
+  const a2 = acc(x + vx * h / 2, y + vy * h / 2);
+  const k2vx = vx + a1[0] * h / 2, k2vy = vy + a1[1] * h / 2;
+  const a3 = acc(x + k2vx * h / 2, y + k2vy * h / 2);
+  const k3vx = vx + a2[0] * h / 2, k3vy = vy + a2[1] * h / 2;
+  const a4 = acc(x + k3vx * h, y + k3vy * h);
+  const k4vx = vx + a3[0] * h, k4vy = vy + a3[1] * h;
+  S.x += h / 6 * (vx + 2 * k2vx + 2 * k3vx + k4vx);
+  S.y += h / 6 * (vy + 2 * k2vy + 2 * k3vy + k4vy);
+  S.vx += h / 6 * (a1[0] + 2 * a2[0] + 2 * a3[0] + a4[0]);
+  S.vy += h / 6 * (a1[1] + 2 * a2[1] + 2 * a3[1] + a4[1]);
+  S.t += h;
+}
+function integrate(dt) {
+  const m = mu(), rmin = radius(P.m1) + radius(P.m2);
+  let rem = dt, n = 0;
+  while (rem > 1e-12 && n++ < 6000) {
+    const r = Math.hypot(S.x, S.y);
+    if (r < rmin) { collided = true; running = false; syncPlay(); $("hint").textContent = "The bodies collided. Restart or drag them apart."; return; }
+    const h = Math.min(rem, 0.0015 * TAU * Math.sqrt(r * r * r / m));
+    rk4(h); rem -= h;
+  }
+}
+function advance(dt) {
+  while (dt > 0 && !collided) {
+    const toEdge = sectorEnd - S.t;
+    const h = Math.min(dt, Math.max(toEdge, 1e-9));
+    integrate(h); dt -= h;
+    const cur = sectors[sectors.length - 1];
+    cur.pts.push([S.x, S.y]);
+    if (S.t >= sectorEnd - 1e-9) {
+      sectors.push({ pts: [[S.x, S.y]] }); sectorEnd += sectorDt;
+      if (sectors.length > 7) sectors.shift();
+    }
+  }
+  trail.push(S.x, S.y);
+  if (trail.length > 5000) trail.splice(0, trail.length - 5000);
+  const el = elements();
+  series.push([S.t, el.KE, el.PE]);
+  if (series.length > 520) series.shift();
+}
+
+/* ---------- canvas plumbing ---------- */
+function setup(cv) {
+  const ctx = cv.getContext("2d");
+  const o = { cv, ctx, w: 0, h: 0 };
+  const resize = () => {
+    const d = Math.min(window.devicePixelRatio || 1, 2), b = cv.getBoundingClientRect();
+    o.w = b.width; o.h = b.height;
+    cv.width = Math.round(b.width * d); cv.height = Math.round(b.height * d);
+    ctx.setTransform(d, 0, 0, d, 0, 0);
+  };
+  new ResizeObserver(resize).observe(cv); resize();
+  return o;
+}
+const sky = setup($("sky")), ue = setup($("ueff")), en = setup($("energy"));
+const stars = Array.from({ length: 170 }, () => ({ a: Math.random() * TAU, d: Math.sqrt(Math.random()) * 1.5, s: Math.random() * 1.1 + 0.3, o: Math.random() * 0.5 + 0.15 }));
+
+const scale = () => Math.min(sky.w, sky.h) / 2 / extent * zoom;
+const toScreen = (x, y) => [sky.w / 2 + x * scale(), sky.h / 2 - y * scale()];
+const toWorld = (px, py) => [(px - sky.w / 2) / scale(), -(py - sky.h / 2) / scale()];
+
+function bodies(el) {
+  const a = f1(), b = f2();
+  if (frame === "b1") return { p1: [0, 0], p2: [S.x, S.y], v1: [0, 0], v2: [S.vx, S.vy] };
+  if (frame === "rot") return { p1: [-a * el.r, 0], p2: [b * el.r, 0], v1: [-a * el.vr, 0], v2: [b * el.vr, 0] };
+  return { p1: [-a * S.x, -a * S.y], p2: [b * S.x, b * S.y], v1: [-a * S.vx, -a * S.vy], v2: [b * S.vx, b * S.vy] };
+}
+
+function arrow(ctx, x0, y0, x1, y1, color, width) {
+  const dx = x1 - x0, dy = y1 - y0, len = Math.hypot(dx, dy);
+  if (len < 3) return;
+  const ux = dx / len, uy = dy / len, hd = Math.min(9, len * 0.5);
+  ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = width || 2; ctx.lineCap = "round";
+  ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1 - ux * hd * 0.8, y1 - uy * hd * 0.8); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x1, y1);
+  ctx.lineTo(x1 - ux * hd - uy * hd * 0.45, y1 - uy * hd + ux * hd * 0.45);
+  ctx.lineTo(x1 - ux * hd + uy * hd * 0.45, y1 - uy * hd - ux * hd * 0.45);
+  ctx.closePath(); ctx.fill();
+}
+function niceStep(x) { const p = 10 ** Math.floor(Math.log10(x)), n = x / p; return (n < 1.5 ? 1 : n < 3.5 ? 2 : n < 7.5 ? 5 : 10) * p; }
+const fmt = (x, d = 3) => !isFinite(x) ? "∞" : Math.abs(x) >= 1000 || (Math.abs(x) < 0.001 && x !== 0) ? x.toExponential(2) : x.toFixed(d);
+
+/* ---------- main view ---------- */
+function drawSky(el) {
+  const { ctx, w, h } = sky, s = scale(), cx = w / 2, cy = h / 2;
+  ctx.clearRect(0, 0, w, h);
+
+  // star field: fixed in the inertial frame, so it turns backwards in the co-rotating view
+  const rot = frame === "rot" ? -el.th : 0, R = Math.hypot(w, h) / 2;
+  for (const st of stars) {
+    ctx.globalAlpha = st.o; ctx.fillStyle = C.text;
+    ctx.beginPath(); ctx.arc(cx + Math.cos(st.a + rot) * st.d * R * 0.7, cy - Math.sin(st.a + rot) * st.d * R * 0.7, st.s, 0, TAU); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+
+  // range rings
+  const step = niceStep(extent / zoom / 3);
+  ctx.strokeStyle = C.rule; ctx.lineWidth = 1; ctx.fillStyle = C.muted; ctx.font = FONT_MONO; ctx.textAlign = "left"; ctx.textBaseline = "bottom";
+  for (let i = 1; i * step * s < R; i++) {
+    ctx.globalAlpha = 0.7; ctx.beginPath(); ctx.arc(cx, cy, i * step * s, 0, TAU); ctx.stroke();
+    ctx.globalAlpha = 0.8; if (i <= 4) ctx.fillText(+(i * step).toPrecision(3) + "", cx + i * step * s + 4, cy - 3);
+  }
+  ctx.globalAlpha = 0.5; ctx.beginPath(); ctx.moveTo(0, cy); ctx.lineTo(w, cy); ctx.moveTo(cx, 0); ctx.lineTo(cx, h); ctx.stroke();
+  ctx.globalAlpha = 1;
+
+  const a = f1(), b = f2(), B = bodies(el);
+  const k2 = frame === "b1" ? 1 : b, k1 = frame === "b1" ? 0 : -a;
+
+  // swept areas (Kepler's second law)
+  if ($("s-area").checked && frame !== "rot") {
+    sectors.forEach((sec, i) => {
+      if (sec.pts.length < 2) return;
+      ctx.beginPath(); ctx.moveTo(cx, cy);
+      for (const q of sec.pts) ctx.lineTo(cx + q[0] * k2 * s, cy - q[1] * k2 * s);
+      ctx.closePath(); ctx.fillStyle = C.body2; ctx.globalAlpha = i % 2 ? 0.26 : 0.12; ctx.fill();
+    });
+    ctx.globalAlpha = 1;
+  }
+
+  // predicted conic from the orbital elements
+  if ($("s-conic").checked) {
+    ctx.setLineDash([4, 5]); ctx.lineWidth = 1.2;
+    if (frame === "rot") {
+      if (isFinite(el.ra)) {
+        ctx.strokeStyle = C.muted;
+        for (const [k, col] of [[b, C.body2], [-a, C.body1]]) {
+          ctx.strokeStyle = col; ctx.globalAlpha = 0.7;
+          ctx.beginPath(); ctx.moveTo(cx + k * el.rp * s, cy - 12); ctx.lineTo(cx + k * el.rp * s, cy + 12);
+          ctx.moveTo(cx + k * el.ra * s, cy - 12); ctx.lineTo(cx + k * el.ra * s, cy + 12); ctx.stroke();
+        }
+      }
+    } else if (el.p > 1e-6) {
+      const lim = extent / zoom * 4;
+      for (const [k, col] of [[k2, C.body2], [k1, C.body1]]) {
+        if (!k) continue;
+        ctx.strokeStyle = col; ctx.globalAlpha = 0.65; ctx.beginPath();
+        let pen = false;
+        for (let i = 0; i <= 480; i++) {
+          const th = i / 480 * TAU, den = 1 + el.e * Math.cos(th - el.w), rr = el.p / den;
+          if (den < 0.02 || rr * Math.abs(k) > lim) { pen = false; continue; }
+          const X = cx + rr * Math.cos(th) * k * s, Y = cy - rr * Math.sin(th) * k * s;
+          pen ? ctx.lineTo(X, Y) : ctx.moveTo(X, Y); pen = true;
+        }
+        ctx.stroke();
+      }
+    }
+    ctx.setLineDash([]); ctx.globalAlpha = 1;
+  }
+
+  // trails
+  if ($("s-trail").checked && frame !== "rot" && trail.length > 4) {
+    const n = trail.length / 2, chunks = 14;
+    for (const [k, col] of [[k2, C.body2], [k1, C.body1]]) {
+      if (!k) continue;
+      ctx.strokeStyle = col; ctx.lineWidth = 1.8; ctx.lineJoin = "round";
+      for (let c = 0; c < chunks; c++) {
+        const i0 = Math.floor(n * c / chunks), i1 = Math.min(n - 1, Math.floor(n * (c + 1) / chunks));
+        ctx.globalAlpha = 0.08 + 0.8 * ((c + 1) / chunks) ** 2;
+        ctx.beginPath();
+        for (let i = i0; i <= i1; i++) { const X = cx + trail[2 * i] * k * s, Y = cy - trail[2 * i + 1] * k * s; i === i0 ? ctx.moveTo(X, Y) : ctx.lineTo(X, Y); }
+        ctx.stroke();
+      }
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  const [x1, y1] = toScreen(...B.p1), [x2, y2] = toScreen(...B.p2);
+  // line of centres
+  ctx.strokeStyle = C.muted; ctx.globalAlpha = 0.45; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke(); ctx.globalAlpha = 1;
+
+  // vectors
+  const R1 = Math.max(radius(P.m1) * s, 5), R2 = Math.max(radius(P.m2) * s, 4);
+  if ($("s-vec").checked) {
+    const ux = (x2 - x1) / (Math.hypot(x2 - x1, y2 - y1) || 1), uy = (y2 - y1) / (Math.hypot(x2 - x1, y2 - y1) || 1);
+    const half = Math.hypot(x2 - x1, y2 - y1) / 2;
+    const fl = Math.min(48 * el.F / F0, 150, Math.max(half - 4, 6));
+    arrow(ctx, x1, y1, x1 + ux * fl, y1 + uy * fl, C.force, 2.4);
+    arrow(ctx, x2, y2, x2 - ux * fl, y2 - uy * fl, C.force, 2.4);
+    if (frame === "rot") {
+      const om = el.h / (el.r * el.r), cf = mur() * om * om * el.r;
+      const cl = Math.min(48 * cf / F0, 150);
+      arrow(ctx, x1, y1 - 0.01, x1 - ux * cl, y1 - uy * cl, C.inertial, 2.4);
+      arrow(ctx, x2, y2 - 0.01, x2 + ux * cl, y2 + uy * cl, C.inertial, 2.4);
+    }
+    const t1 = toScreen(B.p1[0] + B.v1[0] * tau, B.p1[1] + B.v1[1] * tau), t2 = toScreen(B.p2[0] + B.v2[0] * tau, B.p2[1] + B.v2[1] * tau);
+    arrow(ctx, x1, y1, t1[0], t1[1], C.body1, 1.8);
+    arrow(ctx, x2, y2, t2[0], t2[1], C.body2, 1.8);
+    if (!running && frame !== "rot") {
+      ctx.strokeStyle = C.text; ctx.lineWidth = 1; ctx.globalAlpha = 0.8;
+      for (const [t, on] of [[t2, true], [t1, frame === "bary"]]) if (on) { ctx.beginPath(); ctx.arc(t[0], t[1], 7, 0, TAU); ctx.stroke(); }
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  // bodies
+  for (const [x, y, Rr, col] of [[x1, y1, R1, C.body1], [x2, y2, R2, C.body2]]) {
+    const g = ctx.createRadialGradient(x, y, 0, x, y, Rr * 4.5);
+    g.addColorStop(0, col + "66"); g.addColorStop(1, col + "00");
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, Rr * 4.5, 0, TAU); ctx.fill();
+    const g2 = ctx.createRadialGradient(x - Rr * 0.35, y - Rr * 0.35, Rr * 0.1, x, y, Rr);
+    g2.addColorStop(0, "#ffffff"); g2.addColorStop(0.35, col); g2.addColorStop(1, col);
+    ctx.fillStyle = g2; ctx.beginPath(); ctx.arc(x, y, Rr, 0, TAU); ctx.fill();
+  }
+
+  // barycentre
+  const [bx, by] = frame === "b1" ? toScreen(a * S.x, a * S.y) : [cx, cy];
+  ctx.strokeStyle = C.text; ctx.lineWidth = 1.4;
+  ctx.beginPath(); ctx.moveTo(bx - 6, by); ctx.lineTo(bx + 6, by); ctx.moveTo(bx, by - 6); ctx.lineTo(bx, by + 6); ctx.stroke();
+  ctx.beginPath(); ctx.arc(bx, by, 3.2, 0, TAU); ctx.stroke();
+
+  // d'Alembert balance readout
+  if (frame === "rot") {
+    const om = el.h / (el.r * el.r), cf = mur() * om * om * el.r;
+    $("balance").innerHTML = "gravity <b>" + fmt(el.F) + "</b> · centrifugal <b>" + fmt(cf) + "</b> · net μr̈ <b>" + fmt(cf - el.F) + "</b>";
+  } else $("balance").textContent = "t = " + fmt(S.t, 2) + "   dA/dt = h/2 = " + fmt(Math.abs(el.h) / 2);
+}
+
+/* ---------- effective potential ---------- */
+function drawUeff(el) {
+  const { ctx, w, h } = ue; ctx.clearRect(0, 0, w, h);
+  const pad = { l: 44, r: 12, t: 10, b: 26 }, pw = w - pad.l - pad.r, ph = h - pad.t - pad.b;
+  const Gmm = G * P.m1 * P.m2, m = mur(), L2 = el.L * el.L;
+  const U = r => L2 / (2 * m * r * r) - Gmm / r;
+  let rmax = isFinite(el.ra) ? Math.min(el.ra * 1.4, Math.max(14 * el.p, el.r * 1.3)) : Math.max(6 * el.rp, el.r * 1.3, 2 * P.r0);
+  const Umin = L2 > 1e-9 ? -Gmm * Gmm * m / (2 * L2) : -Gmm / (0.08 * rmax);
+  const ylo = Umin * 1.25, yhi = Math.max(el.E, 0) + 0.35 * Math.abs(Umin);
+  const X = r => pad.l + r / rmax * pw, Y = u => pad.t + (yhi - u) / (yhi - ylo) * ph;
+
+  ctx.font = FONT_MONO; ctx.fillStyle = C.muted; ctx.strokeStyle = C.rule; ctx.lineWidth = 1;
+  ctx.strokeRect(pad.l, pad.t, pw, ph);
+  ctx.textAlign = "center"; ctx.textBaseline = "top";
+  const xs = niceStep(rmax / 4);
+  for (let r = xs; r < rmax * 0.98; r += xs) { ctx.beginPath(); ctx.moveTo(X(r), pad.t + ph); ctx.lineTo(X(r), pad.t + ph + 4); ctx.stroke(); ctx.fillText(+r.toPrecision(3) + "", X(r), pad.t + ph + 7); }
+  ctx.textAlign = "right"; ctx.fillText("r", pad.l + pw, pad.t + ph + 7);
+  ctx.textBaseline = "middle"; ctx.fillText("0", pad.l - 6, Y(0)); ctx.fillText(fmt(Umin, 2), pad.l - 6, Y(Umin));
+  ctx.setLineDash([3, 4]); ctx.beginPath(); ctx.moveTo(pad.l, Y(0)); ctx.lineTo(pad.l + pw, Y(0)); ctx.stroke(); ctx.setLineDash([]);
+
+  ctx.save(); ctx.beginPath(); ctx.rect(pad.l, pad.t, pw, ph); ctx.clip();
+  // allowed region shading between turning points
+  const rA = el.rp, rB = isFinite(el.ra) ? el.ra : rmax;
+  ctx.fillStyle = C.kinetic; ctx.globalAlpha = 0.13; ctx.beginPath();
+  ctx.moveTo(X(rA), Y(el.E));
+  for (let i = 0; i <= 80; i++) { const r = rA + (rB - rA) * i / 80; if (r > 0) ctx.lineTo(X(r), Y(Math.min(U(r), el.E))); }
+  ctx.lineTo(X(rB), Y(el.E)); ctx.closePath(); ctx.fill(); ctx.globalAlpha = 1;
+  // curve
+  ctx.strokeStyle = C.force; ctx.lineWidth = 2; ctx.beginPath();
+  let pen = false;
+  for (let i = 1; i <= 400; i++) { const r = rmax * i / 400, u = U(r); if (u > yhi + (yhi - ylo)) { pen = false; continue; } pen ? ctx.lineTo(X(r), Y(u)) : ctx.moveTo(X(r), Y(u)); pen = true; }
+  ctx.stroke();
+  // energy line
+  ctx.strokeStyle = C.text; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(pad.l, Y(el.E)); ctx.lineTo(pad.l + pw, Y(el.E)); ctx.stroke();
+  // current state: radial kinetic energy is the gap between the curve and the line
+  const uc = U(el.r);
+  ctx.strokeStyle = C.kinetic; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(X(el.r), Y(uc)); ctx.lineTo(X(el.r), Y(el.E)); ctx.stroke();
+  ctx.fillStyle = C.body2; ctx.strokeStyle = C.plate; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(X(el.r), Y(uc), 5.5, 0, TAU); ctx.fill(); ctx.stroke();
+  ctx.restore();
+
+  ctx.font = FONT_SERIF; ctx.textBaseline = "bottom";
+  ctx.fillStyle = C.text; ctx.textAlign = "right"; ctx.fillText("E", pad.l + pw - 6, Y(el.E) - 3);
+  ctx.fillStyle = C.force; ctx.textAlign = "left"; ctx.textBaseline = "top";
+  ctx.fillText("U = L²/2μr² − Gm₁m₂/r", pad.l + pw * 0.34, pad.t + 6);
+  ctx.fillStyle = C.kinetic; ctx.fillText("½μṙ²", Math.min(X(el.r) + 8, pad.l + pw - 40), Math.min(Y(el.E) + 4, pad.t + ph - 20));
+}
+
+/* ---------- energy strip chart ---------- */
+function drawEnergy(el) {
+  const { ctx, w, h } = en; ctx.clearRect(0, 0, w, h);
+  const pad = { l: 44, r: 30, t: 10, b: 26 }, pw = w - pad.l - pad.r, ph = h - pad.t - pad.b;
+  const data = series.length ? series : [[S.t, el.KE, el.PE]];
+  let lo = 0, hi = 0;
+  for (const d of data) { lo = Math.min(lo, d[2], d[1] + d[2]); hi = Math.max(hi, d[1]); }
+  const span = (hi - lo) || 1; lo -= span * 0.08; hi += span * 0.08;
+  const t0 = data[0][0], t1 = Math.max(data[data.length - 1][0], t0 + T0 * 0.5);
+  const X = t => pad.l + (t - t0) / (t1 - t0) * pw, Y = v => pad.t + (hi - v) / (hi - lo) * ph;
+
+  ctx.font = FONT_MONO; ctx.strokeStyle = C.rule; ctx.lineWidth = 1; ctx.fillStyle = C.muted;
+  ctx.strokeRect(pad.l, pad.t, pw, ph);
+  ctx.textAlign = "right"; ctx.textBaseline = "middle";
+  const ys = niceStep((hi - lo) / 4);
+  for (let v = Math.ceil(lo / ys) * ys; v <= hi; v += ys) {
+    ctx.globalAlpha = Math.abs(v) < ys / 2 ? 1 : 0.45; ctx.beginPath(); ctx.moveTo(pad.l, Y(v)); ctx.lineTo(pad.l + pw, Y(v)); ctx.stroke();
+    ctx.globalAlpha = 1; ctx.fillText(+v.toPrecision(3) + "", pad.l - 6, Y(v));
+  }
+  ctx.textAlign = "left"; ctx.textBaseline = "top"; ctx.fillText("t = " + fmt(t0, 1), pad.l, pad.t + ph + 7);
+  ctx.textAlign = "right"; ctx.fillText(fmt(t1, 1), pad.l + pw, pad.t + ph + 7);
+
+  const line = (f, col, lw) => {
+    ctx.strokeStyle = col; ctx.lineWidth = lw; ctx.lineJoin = "round"; ctx.beginPath();
+    data.forEach((d, i) => i ? ctx.lineTo(X(d[0]), Y(f(d))) : ctx.moveTo(X(d[0]), Y(f(d))));
+    ctx.stroke();
+    const d = data[data.length - 1];
+    ctx.fillStyle = col; ctx.beginPath(); ctx.arc(X(d[0]), Y(f(d)), 3.2, 0, TAU); ctx.fill();
+    return Y(f(d));
+  };
+  const yk = line(d => d[1], C.kinetic, 1.8), yp = line(d => d[2], C.force, 1.8), ye = line(d => d[1] + d[2], C.text, 2);
+  // direct labels in the right margin, nudged apart
+  const labs = [["T", yk, C.kinetic], ["E", ye, C.text], ["V", yp, C.force]].sort((p, q) => p[1] - q[1]);
+  for (let i = 1; i < labs.length; i++) if (labs[i][1] - labs[i - 1][1] < 14) labs[i][1] = labs[i - 1][1] + 14;
+  ctx.font = FONT_SERIF; ctx.textAlign = "left"; ctx.textBaseline = "middle";
+  const xl = X(data[data.length - 1][0]) + 8;
+  for (const [t, y, c] of labs) { ctx.fillStyle = c; ctx.fillText(t, Math.min(xl, w - 14), y); }
+}
+
+/* ---------- readouts ---------- */
+function readouts(el) {
+  let name, cls, tag;
+  if (Math.abs(el.h) < 1e-4 * Math.sqrt(mu() * el.r)) name = "Radial plunge";
+  else if (el.e < 0.005) name = "Circular";
+  else if (el.e < 0.995) name = "Elliptical";
+  else if (el.e < 1.005) name = "Parabolic";
+  else name = "Hyperbolic";
+  if (name === "Parabolic") { cls = "edge"; tag = "escape, E = 0"; }
+  else if (el.E < 0) { cls = "bound"; tag = "bound, E < 0"; }
+  else { cls = "unbound"; tag = "unbound, E > 0"; }
+  $("otype").textContent = name; $("obound").className = "pill " + cls; $("obound").textContent = tag;
+  $("r-e").textContent = fmt(el.e); $("r-a").textContent = isFinite(el.a) ? fmt(el.a) : "∞";
+  $("r-rp").textContent = fmt(el.rp); $("r-ra").textContent = fmt(el.ra);
+  $("r-T").textContent = fmt(el.T, 2); $("r-n").textContent = isFinite(el.T) ? (S.t / el.T).toFixed(2) : "–";
+  $("r-r").textContent = fmt(el.r); $("r-v").textContent = fmt(el.v);
+  $("r-E").textContent = fmt(el.E); $("r-L").textContent = fmt(el.L); $("r-F").textContent = fmt(el.F);
+  const d = Math.abs(E0) > 1e-9 ? (el.E - E0) / Math.abs(E0) : el.E - E0;
+  $("r-dE").textContent = d === 0 ? "0" : d.toExponential(1);
+}
+function legend() {
+  const items = [["dot", C.body1, "Body 1"], ["dot", C.body2, "Body 2"], ["", C.force, "Gravity"]];
+  if (frame === "rot") items.push(["", C.inertial, "Centrifugal"]);
+  $("legend").innerHTML = items.map(([c, col, t]) => `<span class="${c}"><i style="background:${col}"></i>${t}</span>`).join("") + "<span>⊕ Barycentre</span>";
+}
+
+/* ---------- controls ---------- */
+const sliders = { m1: v => v.toFixed(1), m2: v => v.toFixed(1), r0: v => v.toFixed(2), k: v => v.toFixed(2) + " × v꜀", gam: v => v.toFixed(0) + "°", rate: v => v.toFixed(1) + "×" };
+function syncSliders() { for (const id in sliders) { $(id).value = P[id]; $("o-" + id).textContent = sliders[id](P[id]); } }
+function syncPlay() { $("play").textContent = running ? "Pause" : "Play"; }
+function syncChips() { for (const c of $("presets").children) c.classList.toggle("on", c.textContent === activePreset); }
+for (const id in sliders) $(id).addEventListener("input", e => {
+  P[id] = +e.target.value; $("o-" + id).textContent = sliders[id](P[id]);
+  if (id !== "rate") { activePreset = ""; syncChips(); initFromParams(); }
+});
+for (const name in PRESETS) {
+  const b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.textContent = name;
+  b.addEventListener("click", () => { Object.assign(P, PRESETS[name]); activePreset = name; zoom = 1; syncSliders(); syncChips(); initFromParams(); running = true; syncPlay(); });
+  $("presets").appendChild(b);
+}
+$("play").addEventListener("click", () => { if (collided) return; running = !running; syncPlay(); });
+$("step").addEventListener("click", () => { running = false; syncPlay(); if (!collided) advance(T0 / 120); });
+$("reset").addEventListener("click", () => { initFromParams(); });
+$("zoomIn").addEventListener("click", () => { zoom = Math.min(zoom * 1.3, 8); });
+$("zoomOut").addEventListener("click", () => { zoom = Math.max(zoom / 1.3, 0.15); });
+$("zoomFit").addEventListener("click", () => { zoom = 1; fit(false); });
+for (const r of document.querySelectorAll('input[name=frame]')) r.addEventListener("change", () => { frame = r.value; legend(); fit(false); $("hint").textContent = frame === "rot" ? "The frame turns with the line of centres. On a circle the two arrows cancel: statics." : ""; });
+addEventListener("keydown", e => { if (e.code === "Space" && !/INPUT|BUTTON/.test(e.target.tagName)) { e.preventDefault(); $("play").click(); } });
+
+/* ---------- dragging bodies and velocity tips ---------- */
+let drag = null;
+const cvPos = e => { const b = sky.cv.getBoundingClientRect(); return [e.clientX - b.left, e.clientY - b.top]; };
+function pick(px, py) {
+  if (frame === "rot") return null;
+  const el = elements(), B = bodies(el), near = (q, d) => Math.hypot(q[0] - px, q[1] - py) < d;
+  if (!running && $("s-vec").checked) {
+    if (near(toScreen(B.p2[0] + B.v2[0] * tau, B.p2[1] + B.v2[1] * tau), 14)) return "v2";
+    if (frame === "bary" && near(toScreen(B.p1[0] + B.v1[0] * tau, B.p1[1] + B.v1[1] * tau), 14)) return "v1";
+  }
+  if (near(toScreen(...B.p2), 20)) return "p2";
+  if (frame === "bary" && near(toScreen(...B.p1), 20)) return "p1";
+  return null;
+}
+sky.cv.addEventListener("pointerdown", e => {
+  const [px, py] = cvPos(e), what = pick(px, py);
+  if (!what) { if (frame === "rot") $("hint").textContent = "Switch to Barycentric or Body 1 fixed to drag."; return; }
+  drag = { what, was: running }; running = false; collided = false; syncPlay();
+  sky.cv.setPointerCapture(e.pointerId); sky.cv.style.cursor = "grabbing";
+});
+sky.cv.addEventListener("pointermove", e => {
+  const [px, py] = cvPos(e);
+  if (!drag) { sky.cv.style.cursor = pick(px, py) ? "grab" : "default"; return; }
+  const [wx, wy] = toWorld(px, py), a = f1(), b = f2(), el = elements(), B = bodies(el);
+  const rmin = (radius(P.m1) + radius(P.m2)) * 1.6, rcap = extent / zoom * 6;
+  let nx, ny;
+  if (drag.what === "p2") { const k = frame === "b1" ? 1 : b; nx = wx / k; ny = wy / k; }
+  if (drag.what === "p1") { nx = -wx / a; ny = -wy / a; }
+  if (nx !== undefined) {
+    const r = Math.hypot(nx, ny) || 1e-6, c = Math.min(Math.max(r, rmin), rcap) / r;
+    S.x = nx * c; S.y = ny * c;
+  }
+  if (drag.what === "v2") { const k = frame === "b1" ? 1 : b; S.vx = (wx - B.p2[0]) / tau / k; S.vy = (wy - B.p2[1]) / tau / k; }
+  if (drag.what === "v1") { S.vx = -(wx - B.p1[0]) / tau / a; S.vy = -(wy - B.p1[1]) / tau / a; }
+  trail = [];
+});
+const endDrag = () => {
+  if (!drag) return;
+  const was = drag.was && drag.what[0] === "p"; drag = null; sky.cv.style.cursor = "default";
+  activePreset = ""; syncChips();
+  const keep = extent; restartRecord(); extent = keep; fit(false);
+  running = was; syncPlay();
+  $("hint").textContent = "Custom state. Restart returns to the slider values.";
+};
+sky.cv.addEventListener("pointerup", endDrag);
+sky.cv.addEventListener("pointercancel", endDrag);
+
+/* ---------- loop ---------- */
+let last = performance.now();
+function tick(now) {
+  const dt = Math.min((now - last) / 1000, 0.05); last = now;
+  if (running && !collided) {
+    advance(P.rate * T0 / 6 * dt);
+    const el = elements();
+    if (!isFinite(el.ra) || el.ra > 30 * P.r0) fit(false);
+  }
+  if (!drag) extent += (extentTarget - extent) * 0.08;
+  const el = elements();
+  drawSky(el); drawUeff(el); drawEnergy(el); readouts(el);
+  requestAnimationFrame(tick);
+}
+syncSliders(); syncChips(); syncPlay(); legend(); initFromParams();
+if (!running) advance(T0 * 0.35);   // reduced motion: open on a still frame that already shows an arc
+requestAnimationFrame(tick);
+})();
+</script>
+</body>
+</html>
